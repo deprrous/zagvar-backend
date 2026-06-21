@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  IMAGE: ghcr.io/erdene-vvl/zagvar-backend
+  IMAGE: ghcr.io/deprrous/zagvar-backend
 
 jobs:
   build:
