@@ -1,0 +1,60 @@
+# Production stack for the Zagvar droplet.
+#
+# - PostgreSQL runs NATIVELY on the host (not here) for durability + easy
+#   pg_dump backups. The api container reaches it via host.docker.internal.
+# - Both images are built in CI and pulled from GHCR. `build:` blocks are kept
+#   as a fallback for building directly on the server if ever needed.
+# - Ports bind to 127.0.0.1 only; nginx (on the host) is the sole public entry.
+#
+# Lives at /opt/zagvar/app/docker-compose.prod.yml alongside the .env file.
+name: zagvar
+
+services:
+  api:
+    image: ghcr.io/erdene-vvl/zagvar-backend:latest
+    pull_policy: always
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      PORT: 3010
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "127.0.0.1:3010:3010"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"require('http').get('http://127.0.0.1:3010/docs', r => process.exit(r.statusCode < 500 ? 0 : 1)).on('error', () => process.exit(1))\"",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  web:
+    image: ghcr.io/erdene-vvl/zagvar-frontend:latest
+    pull_policy: always
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      # NEXT_PUBLIC_API_URL is inlined at build time; set here too so any
+      # server-side runtime reads of process.env resolve correctly.
+      NEXT_PUBLIC_API_URL: https://api.zagvar.com
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      - api
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"require('http').get('http://127.0.0.1:3000/', r => process.exit(r.statusCode < 500 ? 0 : 1)).on('error', () => process.exit(1))\"",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s

@@ -9,6 +9,10 @@ async function bootstrap(): Promise<void> {
   const config = app.get(ConfigService);
   const logger = new Logger('Bootstrap');
 
+  // Behind nginx (TLS terminated at the proxy): trust the first hop so secure
+  // cookies are emitted and `req.ip` reflects the real client, not the proxy.
+  app.getHttpAdapter().getInstance().set('trust proxy', 1);
+
   // Credentialed CORS so browsers send/receive the httpOnly auth cookies.
   // With credentials, the allowed origin cannot be the `*` wildcard: an
   // explicit allowlist (CORS_ORIGINS, comma-separated) is used when configured,
