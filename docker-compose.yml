@@ -1,0 +1,42 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: zagvar-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: zagvar
+      POSTGRES_PASSWORD: zagvar
+      POSTGRES_DB: zagvar
+    ports:
+      - '5432:5432'
+    volumes:
+      - zagvar_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U zagvar -d zagvar']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    container_name: zagvar-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3010
+      DATABASE_URL: postgresql://zagvar:zagvar@db:5432/zagvar?schema=public
+      JWT_SECRET: ${JWT_SECRET:-change-me-access-secret-please}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-change-me-refresh-secret-please}
+      JWT_ACCESS_EXPIRES_IN: ${JWT_ACCESS_EXPIRES_IN:-15m}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
+      SEED_SUPER_ADMIN_EMAIL: ${SEED_SUPER_ADMIN_EMAIL:-superadmin@zagvar.local}
+      SEED_SUPER_ADMIN_PASSWORD: ${SEED_SUPER_ADMIN_PASSWORD:-ChangeMe123!}
+      SEED_SUPER_ADMIN_NAME: ${SEED_SUPER_ADMIN_NAME:-Super Admin}
+    ports:
+      - '3010:3010'
+
+volumes:
+  zagvar_pgdata:
