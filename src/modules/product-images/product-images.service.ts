@@ -8,6 +8,9 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { CreateProductImageDto } from './dto/create-product-image.dto';
 import { UpdateProductImageDto } from './dto/update-product-image.dto';
 
+/** A product may have at most this many images. */
+export const MAX_PRODUCT_IMAGES = 5;
+
 @Injectable()
 export class ProductImagesService {
   constructor(
@@ -15,7 +18,8 @@ export class ProductImagesService {
     private readonly cloudflare: CloudflareService,
   ) {}
 
-  create(productId: string, dto: CreateProductImageDto) {
+  async create(productId: string, dto: CreateProductImageDto) {
+    await this.ensureUnderLimit(productId);
     return this.prisma.productImage.create({
       data: {
         productId,
@@ -32,6 +36,7 @@ export class ProductImagesService {
     position?: number,
   ) {
     if (!file) throw new BadRequestException('No file provided');
+    await this.ensureUnderLimit(productId);
     const { key } = await this.cloudflare.uploadFile(file, 'products');
     return this.prisma.productImage.create({
       data: { productId, url: key, position: position ?? 0 },
@@ -49,7 +54,10 @@ export class ProductImagesService {
     await this.ensureBelongsToProduct(productId, id);
     return this.prisma.productImage.update({
       where: { id },
-      data: { url: this.cloudflare.toStorageKey(dto.url), position: dto.position },
+      data: {
+        url: this.cloudflare.toStorageKey(dto.url),
+        position: dto.position,
+      },
     });
   }
 
@@ -57,6 +65,18 @@ export class ProductImagesService {
     await this.ensureBelongsToProduct(productId, id);
     await this.prisma.productImage.delete({ where: { id } });
     return { id, deleted: true };
+  }
+
+  /** Rejects adding a new image once the per-product cap is reached. */
+  private async ensureUnderLimit(productId: string) {
+    const count = await this.prisma.productImage.count({
+      where: { productId },
+    });
+    if (count >= MAX_PRODUCT_IMAGES) {
+      throw new BadRequestException(
+        `A product can have at most ${MAX_PRODUCT_IMAGES} images`,
+      );
+    }
   }
 
   private async ensureBelongsToProduct(productId: string, id: string) {

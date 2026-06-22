@@ -42,6 +42,8 @@ export class ProductsService {
         description: dto.description,
         price: dto.price,
         currency: dto.currency ?? 'USD',
+        size: dto.size ?? [],
+        color: dto.color ?? [],
         categoryId,
         subcategoryId,
         isActive: dto.isActive ?? true,
@@ -121,9 +123,13 @@ export class ProductsService {
     if (dto.description !== undefined) data.description = dto.description;
     if (dto.price !== undefined) data.price = dto.price;
     if (dto.currency !== undefined) data.currency = dto.currency;
+    if (dto.size !== undefined) data.size = dto.size;
+    if (dto.color !== undefined) data.color = dto.color;
     if (dto.isActive !== undefined) data.isActive = dto.isActive;
     if (dto.categoryId !== undefined) {
-      data.category = categoryId ? { connect: { id: categoryId } } : { disconnect: true };
+      data.category = categoryId
+        ? { connect: { id: categoryId } }
+        : { disconnect: true };
     }
     if (dto.subcategoryId !== undefined) {
       data.subcategory = subcategoryId
@@ -194,7 +200,10 @@ export class ProductsService {
     };
   }
 
-  private resolveShopId(shopIdFromDto: string | undefined, actor: AuthUser): string {
+  private resolveShopId(
+    shopIdFromDto: string | undefined,
+    actor: AuthUser,
+  ): string {
     if (actor.role === Role.ShopAdmin) {
       if (!actor.shopId) throw new ForbiddenException('No shop associated');
       return actor.shopId; // shop admins can only create within their own shop
@@ -235,7 +244,10 @@ export class ProductsService {
         );
       }
       // Keep category consistent with the chosen subcategory.
-      return { categoryId: categoryId ?? subcategory.categoryId, subcategoryId };
+      return {
+        categoryId: categoryId ?? subcategory.categoryId,
+        subcategoryId,
+      };
     }
 
     return { categoryId, subcategoryId };

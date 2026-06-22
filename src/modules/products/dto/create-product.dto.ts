@@ -1,6 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
+  IsArray,
   IsBoolean,
   IsNumber,
   IsOptional,
@@ -29,7 +31,8 @@ export class CreateProductDto {
   name!: string;
 
   @ApiPropertyOptional({
-    description: 'Auto-generated from name when omitted. Unique within the shop.',
+    description:
+      'Auto-generated from name when omitted. Unique within the shop.',
   })
   @IsString()
   @Matches(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, {
@@ -54,6 +57,30 @@ export class CreateProductDto {
   @MaxLength(8)
   @IsOptional()
   currency?: string;
+
+  @ApiPropertyOptional({
+    type: [String],
+    example: ['S', 'M', 'L'],
+    description: 'Available sizes for the product.',
+  })
+  @IsArray()
+  @ArrayMaxSize(50)
+  @IsString({ each: true })
+  @MaxLength(50, { each: true })
+  @IsOptional()
+  size?: string[];
+
+  @ApiPropertyOptional({
+    type: [String],
+    example: ['Red', 'Blue'],
+    description: 'Available colors for the product.',
+  })
+  @IsArray()
+  @ArrayMaxSize(50)
+  @IsString({ each: true })
+  @MaxLength(50, { each: true })
+  @IsOptional()
+  color?: string[];
 
   @ApiPropertyOptional({ format: 'uuid' })
   @IsUUID()
