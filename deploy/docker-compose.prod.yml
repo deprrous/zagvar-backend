@@ -41,7 +41,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3000
-      NEXT_PUBLIC_API_URL: https://api.zagvar.com
+      NEXT_PUBLIC_API_URL: https://api.still.mn
     ports:
       - "127.0.0.1:3000:3000"
     depends_on:
@@ -64,7 +64,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3000
-      NEXT_PUBLIC_API_URL: https://api.zagvar.com
+      NEXT_PUBLIC_API_URL: https://api.still.mn
     ports:
       - "127.0.0.1:3001:3000"
     depends_on:
