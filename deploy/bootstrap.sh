@@ -138,5 +138,5 @@ cat <<EOF
   4. Seed the super admin once:
        docker compose -f docker-compose.prod.yml exec api npm run db:seed
   5. Once DNS A records point here, issue TLS:
-       certbot --nginx -d api.zagvar.com -d zagvar.com -d www.zagvar.com
+       certbot --nginx -d api.stil.mn -d zagvar.com -d www.zagvar.com
 EOF

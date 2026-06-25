@@ -41,7 +41,13 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3000
+<<<<<<< Updated upstream
       NEXT_PUBLIC_API_URL: https://api.still.mn
+=======
+      # NEXT_PUBLIC_API_URL is inlined at build time; set here too so any
+      # server-side runtime reads of process.env resolve correctly.
+      NEXT_PUBLIC_API_URL: https://api.stil.mn
+>>>>>>> Stashed changes
     ports:
       - "127.0.0.1:3000:3000"
     depends_on:
