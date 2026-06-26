@@ -225,11 +225,11 @@ async function main(): Promise<void> {
 
   // --- Categories ------------------------------------------------------------
   const categoryBySlug = new Map<string, string>();
-  for (const cat of CATEGORIES) {
+  for (const [index, cat] of CATEGORIES.entries()) {
     const created = await prisma.category.upsert({
       where: { slug: cat.slug },
-      update: { name: cat.name },
-      create: { name: cat.name, slug: cat.slug },
+      update: { name: cat.name, position: index },
+      create: { name: cat.name, slug: cat.slug, position: index },
     });
     categoryBySlug.set(cat.slug, created.id);
   }

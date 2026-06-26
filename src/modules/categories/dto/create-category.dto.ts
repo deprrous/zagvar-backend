@@ -1,5 +1,13 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
+import {
+  IsInt,
+  IsOptional,
+  IsString,
+  Matches,
+  MaxLength,
+  Min,
+  MinLength,
+} from 'class-validator';
 
 export class CreateCategoryDto {
   @ApiProperty({ example: 'Electronics' })
@@ -18,4 +26,13 @@ export class CreateCategoryDto {
   })
   @IsOptional()
   slug?: string;
+
+  @ApiPropertyOptional({
+    default: 0,
+    description: 'Display order; lower values are shown first.',
+  })
+  @IsInt()
+  @Min(0)
+  @IsOptional()
+  position?: number;
 }

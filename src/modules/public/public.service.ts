@@ -69,7 +69,7 @@ export class PublicService {
 
   async listCategories() {
     return this.prisma.category.findMany({
-      orderBy: { name: 'asc' },
+      orderBy: [{ position: 'asc' }, { name: 'asc' }],
       include: {
         subcategories: { orderBy: { name: 'asc' } },
         _count: { select: { products: { where: { isActive: true } } } },

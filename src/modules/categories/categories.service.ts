@@ -7,7 +7,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 
-const SORTABLE = ['name', 'slug', 'createdAt'] as const;
+const SORTABLE = ['name', 'slug', 'position', 'createdAt'] as const;
 
 @Injectable()
 export class CategoriesService {
@@ -15,7 +15,11 @@ export class CategoriesService {
 
   create(dto: CreateCategoryDto) {
     return this.prisma.category.create({
-      data: { name: dto.name, slug: dto.slug ?? slugify(dto.name) },
+      data: {
+        name: dto.name,
+        slug: dto.slug ?? slugify(dto.name),
+        position: dto.position,
+      },
     });
   }
 
@@ -30,7 +34,7 @@ export class CategoriesService {
       : {};
 
     const orderBy = {
-      [resolveSortColumn(query.sortBy, SORTABLE, 'createdAt')]: query.sortOrder,
+      [resolveSortColumn(query.sortBy, SORTABLE, 'position')]: query.sortOrder,
     };
 
     const [items, total] = await this.prisma.$transaction([
@@ -61,6 +65,7 @@ export class CategoriesService {
     const data: Prisma.CategoryUpdateInput = {};
     if (dto.name !== undefined) data.name = dto.name;
     if (dto.slug !== undefined) data.slug = dto.slug;
+    if (dto.position !== undefined) data.position = dto.position;
     return this.prisma.category.update({ where: { id }, data });
   }
 
