@@ -1,5 +1,5 @@
 # ---- Build stage -----------------------------------------------------------
-FROM node:22-slim AS builder
+FROM node:24-slim AS builder
 WORKDIR /app
 
 # OpenSSL is required by Prisma.
@@ -17,7 +17,7 @@ RUN DATABASE_URL="postgresql://build:build@localhost:5432/build?schema=public" n
   && npm run build
 
 # ---- Runtime stage ---------------------------------------------------------
-FROM node:22-slim AS runner
+FROM node:24-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 
