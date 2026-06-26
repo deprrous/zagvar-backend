@@ -15,11 +15,16 @@ import { UpdateProductDto } from './dto/update-product.dto';
 
 const SORTABLE = ['name', 'price', 'clickCount', 'createdAt'] as const;
 
+const TAXONOMY_SELECT = {
+  select: { id: true, name: true, slug: true },
+  orderBy: { name: 'asc' },
+} as const;
+
 const DETAIL_INCLUDE = {
   images: { orderBy: { position: 'asc' } },
   shop: { select: { id: true, name: true, slug: true, logoUrl: true } },
-  category: { select: { id: true, name: true, slug: true } },
-  subcategory: { select: { id: true, name: true, slug: true } },
+  categories: TAXONOMY_SELECT,
+  subcategories: TAXONOMY_SELECT,
 } satisfies Prisma.ProductInclude;
 
 @Injectable()
@@ -29,9 +34,9 @@ export class ProductsService {
   async create(dto: CreateProductDto, actor: AuthUser) {
     const shopId = this.resolveShopId(dto.shopId, actor);
     await this.ensureShopExists(shopId);
-    const { categoryId, subcategoryId } = await this.resolveTaxonomy(
-      dto.categoryId,
-      dto.subcategoryId,
+    const { categoryIds, subcategoryIds } = await this.resolveTaxonomy(
+      dto.categoryIds,
+      dto.subcategoryIds,
     );
 
     return this.prisma.product.create({
@@ -44,8 +49,8 @@ export class ProductsService {
         currency: dto.currency ?? 'USD',
         size: dto.size ?? [],
         color: dto.color ?? [],
-        categoryId,
-        subcategoryId,
+        categories: { connect: categoryIds.map((id) => ({ id })) },
+        subcategories: { connect: subcategoryIds.map((id) => ({ id })) },
         isActive: dto.isActive ?? true,
       },
       include: DETAIL_INCLUDE,
@@ -57,14 +62,20 @@ export class ProductsService {
     return this.list(query, this.buildWhere(query));
   }
 
-  /** Public listing — only active products belonging to active shops. */
+  /**
+   * Public listing — only active products belonging to active shops. The public
+   * API keeps the historical singular `category`/`subcategory` shape (derived
+   * from the first of each set), so the storefront is unaffected by the move to
+   * many-to-many taxonomy.
+   */
   async findAllPublic(query: QueryProductDto) {
     const where: Prisma.ProductWhereInput = {
       ...this.buildWhere(query),
       isActive: true,
       shop: { isActive: true },
     };
-    return this.list(query, where);
+    const result = await this.list(query, where);
+    return { ...result, items: result.items.map((p) => toPublicProduct(p)) };
   }
 
   async findOne(id: string) {
@@ -87,11 +98,12 @@ export class ProductsService {
     });
     if (!product) throw new NotFoundException('Product not found');
 
-    return this.prisma.product.update({
+    const updated = await this.prisma.product.update({
       where: { id },
       data: { clickCount: { increment: 1 } },
       include: DETAIL_INCLUDE,
     });
+    return toPublicProduct(updated);
   }
 
   /** Atomic single-column increment of the click counter. */
@@ -112,10 +124,6 @@ export class ProductsService {
 
   async update(id: string, dto: UpdateProductDto) {
     await this.ensureExists(id);
-    const { categoryId, subcategoryId } = await this.resolveTaxonomy(
-      dto.categoryId,
-      dto.subcategoryId,
-    );
 
     const data: Prisma.ProductUpdateInput = {};
     if (dto.name !== undefined) data.name = dto.name;
@@ -126,15 +134,23 @@ export class ProductsService {
     if (dto.size !== undefined) data.size = dto.size;
     if (dto.color !== undefined) data.color = dto.color;
     if (dto.isActive !== undefined) data.isActive = dto.isActive;
-    if (dto.categoryId !== undefined) {
-      data.category = categoryId
-        ? { connect: { id: categoryId } }
-        : { disconnect: true };
-    }
-    if (dto.subcategoryId !== undefined) {
-      data.subcategory = subcategoryId
-        ? { connect: { id: subcategoryId } }
-        : { disconnect: true };
+
+    if (dto.categoryIds !== undefined || dto.subcategoryIds !== undefined) {
+      const { categoryIds, subcategoryIds } = await this.resolveTaxonomy(
+        dto.categoryIds,
+        dto.subcategoryIds,
+      );
+      // `set` replaces the full association list, so only touch the side(s) the
+      // caller actually sent. Parent categories of chosen subcategories are
+      // folded into `categoryIds` only when categories are being replaced too.
+      if (dto.categoryIds !== undefined) {
+        data.categories = { set: categoryIds.map((cid) => ({ id: cid })) };
+      }
+      if (dto.subcategoryIds !== undefined) {
+        data.subcategories = {
+          set: subcategoryIds.map((sid) => ({ id: sid })),
+        };
+      }
     }
 
     return this.prisma.product.update({
@@ -166,8 +182,8 @@ export class ProductsService {
         include: {
           images: { orderBy: { position: 'asc' }, take: 1 },
           shop: { select: { id: true, name: true, slug: true } },
-          category: { select: { id: true, name: true, slug: true } },
-          subcategory: { select: { id: true, name: true, slug: true } },
+          categories: TAXONOMY_SELECT,
+          subcategories: TAXONOMY_SELECT,
         },
       }),
       this.prisma.product.count({ where }),
@@ -183,8 +199,12 @@ export class ProductsService {
 
     return {
       ...(query.shopId ? { shopId: query.shopId } : {}),
-      ...(query.categoryId ? { categoryId: query.categoryId } : {}),
-      ...(query.subcategoryId ? { subcategoryId: query.subcategoryId } : {}),
+      ...(query.categoryId
+        ? { categories: { some: { id: query.categoryId } } }
+        : {}),
+      ...(query.subcategoryId
+        ? { subcategories: { some: { id: query.subcategoryId } } }
+        : {}),
       ...(query.isActive !== undefined ? { isActive: query.isActive } : {}),
       ...(query.minPrice !== undefined || query.maxPrice !== undefined
         ? { price }
@@ -215,42 +235,40 @@ export class ProductsService {
   }
 
   /**
-   * Validates the category/subcategory pair and derives the category from the
-   * subcategory when only the latter is supplied.
+   * Validates the requested categories/subcategories and returns deduped id
+   * lists. Each chosen subcategory's parent category is folded into the category
+   * set so a product is always discoverable under the parent too.
    */
   private async resolveTaxonomy(
-    categoryId?: string,
-    subcategoryId?: string,
-  ): Promise<{ categoryId?: string; subcategoryId?: string }> {
-    if (categoryId) {
-      const category = await this.prisma.category.findUnique({
-        where: { id: categoryId },
+    categoryIds?: string[],
+    subcategoryIds?: string[],
+  ): Promise<{ categoryIds: string[]; subcategoryIds: string[] }> {
+    const catIds = new Set(categoryIds ?? []);
+    const subIds = [...new Set(subcategoryIds ?? [])];
+
+    if (catIds.size > 0) {
+      const found = await this.prisma.category.findMany({
+        where: { id: { in: [...catIds] } },
         select: { id: true },
       });
-      if (!category) throw new BadRequestException('Category does not exist');
+      if (found.length !== catIds.size) {
+        throw new BadRequestException('One or more categories do not exist');
+      }
     }
 
-    if (subcategoryId) {
-      const subcategory = await this.prisma.subcategory.findUnique({
-        where: { id: subcategoryId },
-        select: { categoryId: true },
+    if (subIds.length > 0) {
+      const subs = await this.prisma.subcategory.findMany({
+        where: { id: { in: subIds } },
+        select: { id: true, categoryId: true },
       });
-      if (!subcategory) {
-        throw new BadRequestException('Subcategory does not exist');
+      if (subs.length !== subIds.length) {
+        throw new BadRequestException('One or more subcategories do not exist');
       }
-      if (categoryId && subcategory.categoryId !== categoryId) {
-        throw new BadRequestException(
-          'Subcategory does not belong to the given category',
-        );
-      }
-      // Keep category consistent with the chosen subcategory.
-      return {
-        categoryId: categoryId ?? subcategory.categoryId,
-        subcategoryId,
-      };
+      // Keep the category set consistent with the chosen subcategories.
+      for (const sub of subs) catIds.add(sub.categoryId);
     }
 
-    return { categoryId, subcategoryId };
+    return { categoryIds: [...catIds], subcategoryIds: subIds };
   }
 
   private async ensureExists(id: string) {
@@ -268,4 +286,27 @@ export class ProductsService {
     });
     if (!shop) throw new BadRequestException('Shop does not exist');
   }
+}
+
+type TaxonomyRef = { id: string; name: string; slug: string };
+
+/**
+ * Collapses the many-to-many `categories`/`subcategories` arrays back to the
+ * legacy singular shape (`categoryId`/`subcategoryId` + `category`/
+ * `subcategory`) used by the public API and storefront. The first of each set
+ * is treated as the primary one.
+ */
+function toPublicProduct<
+  T extends { categories: TaxonomyRef[]; subcategories: TaxonomyRef[] },
+>(product: T) {
+  const { categories, subcategories, ...rest } = product;
+  const category = categories[0] ?? null;
+  const subcategory = subcategories[0] ?? null;
+  return {
+    ...rest,
+    categoryId: category?.id ?? null,
+    subcategoryId: subcategory?.id ?? null,
+    category,
+    subcategory,
+  };
 }

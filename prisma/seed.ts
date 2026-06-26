@@ -459,13 +459,21 @@ async function main(): Promise<void> {
     if (!shopId) continue;
 
     const slug = slugify(p.name);
+    // Many-to-many taxonomy: connect the product to its (single, in seed data)
+    // category and subcategory. `set` makes re-running the seed idempotent.
+    const categoryConnect = categoryId ? [{ id: categoryId }] : [];
+    const subcategoryConnect = subcategoryId ? [{ id: subcategoryId }] : [];
     await prisma.product.upsert({
       where: { shopId_slug: { shopId, slug } },
-      update: { price: p.price, categoryId, subcategoryId },
+      update: {
+        price: p.price,
+        categories: { set: categoryConnect },
+        subcategories: { set: subcategoryConnect },
+      },
       create: {
         shopId,
-        categoryId,
-        subcategoryId,
+        categories: { connect: categoryConnect },
+        subcategories: { connect: subcategoryConnect },
         name: p.name,
         slug,
         price: p.price,

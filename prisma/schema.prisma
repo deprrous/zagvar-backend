@@ -98,7 +98,7 @@ model Category {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   subcategories Subcategory[]
-  products      Product[]
+  products      Product[]    @relation("ProductCategories")
 
   @@map("categories")
 }
@@ -111,37 +111,34 @@ model Subcategory {
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   category Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  products Product[]
+  products Product[] @relation("ProductSubcategories")
 
   @@unique([categoryId, slug])
   @@map("subcategories")
 }
 
 model Product {
-  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  shopId        String    @map("shop_id") @db.Uuid
-  categoryId    String?   @map("category_id") @db.Uuid
-  subcategoryId String?   @map("subcategory_id") @db.Uuid
-  name          String    @db.VarChar
-  slug          String    @db.VarChar
-  description   String?   @db.Text
-  price         Decimal   @db.Decimal(12, 2)
-  currency      String?   @default("USD") @db.VarChar
-  size          String[]  @default([]) @db.VarChar
-  color         String[]  @default([]) @db.VarChar
-  isActive      Boolean   @default(true) @map("is_active")
-  clickCount    Int       @default(0) @map("click_count")
-  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt     DateTime? @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  shopId      String    @map("shop_id") @db.Uuid
+  name        String    @db.VarChar
+  slug        String    @db.VarChar
+  description String?   @db.Text
+  price       Decimal   @db.Decimal(12, 2)
+  currency    String?   @default("USD") @db.VarChar
+  size        String[]  @default([]) @db.VarChar
+  color       String[]  @default([]) @db.VarChar
+  isActive    Boolean   @default(true) @map("is_active")
+  clickCount  Int       @default(0) @map("click_count")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime? @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  shop        Shop           @relation(fields: [shopId], references: [id], onDelete: Cascade)
-  category    Category?      @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  subcategory Subcategory?   @relation(fields: [subcategoryId], references: [id], onDelete: SetNull)
-  images      ProductImage[]
+  shop          Shop           @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  // A product can belong to many categories and many subcategories.
+  categories    Category[]     @relation("ProductCategories")
+  subcategories Subcategory[]  @relation("ProductSubcategories")
+  images        ProductImage[]
 
   @@unique([shopId, slug])
-  @@index([categoryId])
-  @@index([subcategoryId])
   @@map("products")
 }
 

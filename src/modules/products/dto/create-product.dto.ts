@@ -82,15 +82,30 @@ export class CreateProductDto {
   @IsOptional()
   color?: string[];
 
-  @ApiPropertyOptional({ format: 'uuid' })
-  @IsUUID()
+  @ApiPropertyOptional({
+    type: [String],
+    format: 'uuid',
+    description:
+      'Categories this product belongs to. A product can be in many categories.',
+  })
+  @IsArray()
+  @ArrayMaxSize(50)
+  @IsUUID('all', { each: true })
   @IsOptional()
-  categoryId?: string;
+  categoryIds?: string[];
 
-  @ApiPropertyOptional({ format: 'uuid' })
-  @IsUUID()
+  @ApiPropertyOptional({
+    type: [String],
+    format: 'uuid',
+    description:
+      'Subcategories this product belongs to. Their parent categories are ' +
+      'added automatically.',
+  })
+  @IsArray()
+  @ArrayMaxSize(50)
+  @IsUUID('all', { each: true })
   @IsOptional()
-  subcategoryId?: string;
+  subcategoryIds?: string[];
 
   @ApiPropertyOptional({ default: true })
   @IsBoolean()
