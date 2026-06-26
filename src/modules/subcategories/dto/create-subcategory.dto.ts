@@ -20,6 +20,16 @@ export class CreateSubcategoryDto {
   name!: string;
 
   @ApiPropertyOptional({
+    example: 'Smartphones',
+    description: 'English display name. Shown when the storefront is in English.',
+    nullable: true,
+  })
+  @IsString()
+  @MaxLength(120)
+  @IsOptional()
+  engName?: string | null;
+
+  @ApiPropertyOptional({
     example: 'smartphones',
     description: 'Auto-generated from name when omitted. Unique per category.',
   })

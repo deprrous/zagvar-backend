@@ -17,6 +17,7 @@ export class CategoriesService {
     return this.prisma.category.create({
       data: {
         name: dto.name,
+        engName: dto.engName ?? null,
         slug: dto.slug ?? slugify(dto.name),
         position: dto.position,
       },
@@ -64,6 +65,7 @@ export class CategoriesService {
     await this.ensureExists(id);
     const data: Prisma.CategoryUpdateInput = {};
     if (dto.name !== undefined) data.name = dto.name;
+    if (dto.engName !== undefined) data.engName = dto.engName;
     if (dto.slug !== undefined) data.slug = dto.slug;
     if (dto.position !== undefined) data.position = dto.position;
     return this.prisma.category.update({ where: { id }, data });

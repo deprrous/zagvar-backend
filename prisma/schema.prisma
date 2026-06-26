@@ -94,6 +94,7 @@ model ShopSocial {
 model Category {
   id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name      String   @db.VarChar
+  engName   String?  @map("eng_name") @db.VarChar
   slug      String   @unique @db.VarChar
   position  Int      @default(0)
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -108,6 +109,7 @@ model Subcategory {
   id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   categoryId String   @map("category_id") @db.Uuid
   name       String   @db.VarChar
+  engName    String?  @map("eng_name") @db.VarChar
   slug       String   @db.VarChar
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 

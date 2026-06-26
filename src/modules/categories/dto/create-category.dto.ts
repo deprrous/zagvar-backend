@@ -17,6 +17,16 @@ export class CreateCategoryDto {
   name!: string;
 
   @ApiPropertyOptional({
+    example: 'Electronics',
+    description: 'English display name. Shown when the storefront is in English.',
+    nullable: true,
+  })
+  @IsString()
+  @MaxLength(120)
+  @IsOptional()
+  engName?: string | null;
+
+  @ApiPropertyOptional({
     example: 'electronics',
     description: 'URL-safe slug. Auto-generated from name when omitted.',
   })

@@ -16,7 +16,7 @@ import { UpdateProductDto } from './dto/update-product.dto';
 const SORTABLE = ['name', 'price', 'clickCount', 'createdAt'] as const;
 
 const TAXONOMY_SELECT = {
-  select: { id: true, name: true, slug: true },
+  select: { id: true, name: true, engName: true, slug: true },
   orderBy: { name: 'asc' },
 } as const;
 
@@ -288,7 +288,12 @@ export class ProductsService {
   }
 }
 
-type TaxonomyRef = { id: string; name: string; slug: string };
+type TaxonomyRef = {
+  id: string;
+  name: string;
+  engName: string | null;
+  slug: string;
+};
 
 /**
  * Collapses the many-to-many `categories`/`subcategories` arrays back to the

@@ -23,6 +23,7 @@ export class SubcategoriesService {
       data: {
         categoryId: dto.categoryId,
         name: dto.name,
+        engName: dto.engName ?? null,
         slug: dto.slug ?? slugify(dto.name),
       },
     });
@@ -69,6 +70,7 @@ export class SubcategoriesService {
 
     const data: Prisma.SubcategoryUpdateInput = {};
     if (dto.name !== undefined) data.name = dto.name;
+    if (dto.engName !== undefined) data.engName = dto.engName;
     if (dto.slug !== undefined) data.slug = dto.slug;
     if (dto.categoryId !== undefined) {
       data.category = { connect: { id: dto.categoryId } };
