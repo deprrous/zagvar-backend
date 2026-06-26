@@ -27,26 +27,33 @@ async function bootstrap(): Promise<void> {
   });
   app.enableShutdownHooks();
 
-  const swaggerConfig = new DocumentBuilder()
-    .setTitle('Zagvar Shop Directory API')
-    .setDescription(
-      'Online shop directory backend. Super admins manage shops, shop ' +
-        'admins, and the global taxonomy; shop admins manage their own shop ' +
-        'and products. Public endpoints power discovery.',
-    )
-    .setVersion('1.0')
-    .addBearerAuth()
-    .addTag('auth')
-    .addTag('public')
-    .build();
-  const document = SwaggerModule.createDocument(app, swaggerConfig);
-  SwaggerModule.setup('docs', app, document, {
-    swaggerOptions: { persistAuthorization: true },
-  });
+  // Swagger is a documentation/exploration aid for development only. Disable it
+  // in production so the API surface and schemas aren't publicly exposed.
+  const isProduction = config.get<string>('NODE_ENV') === 'production';
+  if (!isProduction) {
+    const swaggerConfig = new DocumentBuilder()
+      .setTitle('Zagvar Shop Directory API')
+      .setDescription(
+        'Online shop directory backend. Super admins manage shops, shop ' +
+          'admins, and the global taxonomy; shop admins manage their own shop ' +
+          'and products. Public endpoints power discovery.',
+      )
+      .setVersion('1.0')
+      .addBearerAuth()
+      .addTag('auth')
+      .addTag('public')
+      .build();
+    const document = SwaggerModule.createDocument(app, swaggerConfig);
+    SwaggerModule.setup('docs', app, document, {
+      swaggerOptions: { persistAuthorization: true },
+    });
+  }
 
   const port = config.get<number>('PORT', 3000);
   await app.listen(port);
-  logger.log(`Swagger docs available at http://localhost:${port}/docs`);
+  if (!isProduction) {
+    logger.log(`Swagger docs available at http://localhost:${port}/docs`);
+  }
   logger.log(`🚀 Application running on http://localhost:${port}`);
 }
 
