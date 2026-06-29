@@ -13,6 +13,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '../../common/types/auth.types';
 import { CreateSubcategoryDto } from './dto/create-subcategory.dto';
+import { MoveSubcategoryProductsDto } from './dto/move-products.dto';
 import { QuerySubcategoryDto } from './dto/query-subcategory.dto';
 import { UpdateSubcategoryDto } from './dto/update-subcategory.dto';
 import { SubcategoriesService } from './subcategories.service';
@@ -31,6 +32,17 @@ export class SubcategoriesController {
   @ApiOperation({ summary: 'Create a subcategory (super admin)' })
   create(@Body() dto: CreateSubcategoryDto) {
     return this.subcategoriesService.create(dto);
+  }
+
+  @Post('move-products')
+  @Roles(Role.SuperAdmin)
+  @ApiOperation({
+    summary:
+      'Move all products from one subcategory to another (super admin). ' +
+      'The source subcategory is removed from each affected product.',
+  })
+  moveProducts(@Body() dto: MoveSubcategoryProductsDto) {
+    return this.subcategoriesService.moveProducts(dto);
   }
 
   @Get()

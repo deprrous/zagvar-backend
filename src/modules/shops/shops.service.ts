@@ -112,8 +112,26 @@ export class ShopsService {
   }
 
   async remove(id: string) {
-    await this.ensureExists(id);
+    // Pull the shop's own images plus every product image up front; the DB
+    // cascade (shop -> products -> product_images) wipes the rows, so we must
+    // collect the R2 keys before deleting and purge the objects afterwards.
+    const shop = await this.prisma.shop.findUnique({
+      where: { id },
+      select: {
+        logoUrl: true,
+        coverUrl: true,
+        products: { select: { images: { select: { url: true } } } },
+      },
+    });
+    if (!shop) throw new NotFoundException('Shop not found');
+
     await this.prisma.shop.delete({ where: { id } });
+
+    await this.cloudflare.deleteKeys([
+      shop.logoUrl,
+      shop.coverUrl,
+      ...shop.products.flatMap((p) => p.images.map((img) => img.url)),
+    ]);
     return { id, deleted: true };
   }
 

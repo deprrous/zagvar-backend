@@ -9,6 +9,7 @@ import { Prisma } from '@prisma/client';
 import { paginate, resolveSortColumn } from '../../common/dto/paginated';
 import { AuthUser, Role } from '../../common/types/auth.types';
 import { slugify } from '../../common/utils/slug.util';
+import { CloudflareService } from '../file/cf.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { QueryProductDto } from './dto/query-product.dto';
@@ -31,15 +32,17 @@ const DETAIL_INCLUDE = {
 
 @Injectable()
 export class ProductsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly cloudflare: CloudflareService,
+  ) {}
 
   async create(dto: CreateProductDto, actor: AuthUser) {
     const shopId = this.resolveShopId(dto.shopId, actor);
     await this.ensureShopExists(shopId);
-    const { categoryIds, subcategoryIds } = await this.resolveTaxonomy(
-      dto.categoryIds,
-      dto.subcategoryIds,
-    );
+    const { categoryIds, subcategoryIds, subParentIds } =
+      await this.resolveTaxonomy(dto.categoryIds, dto.subcategoryIds);
+    await this.assertTaxonomyComplete(categoryIds, subParentIds);
 
     // Name is optional; slug stays NOT NULL and unique-per-shop, so fall back to
     // a generated slug when the name is missing or transliterates to empty.
@@ -147,10 +150,31 @@ export class ProductsService {
     if (dto.isActive !== undefined) data.isActive = dto.isActive;
 
     if (dto.categoryIds !== undefined || dto.subcategoryIds !== undefined) {
-      const { categoryIds, subcategoryIds } = await this.resolveTaxonomy(
-        dto.categoryIds,
-        dto.subcategoryIds,
+      const { categoryIds, subcategoryIds, subParentIds } =
+        await this.resolveTaxonomy(dto.categoryIds, dto.subcategoryIds);
+
+      // The rule is enforced against the product's effective final taxonomy: a
+      // side the caller didn't send keeps its current values, so load those.
+      const existing = await this.prisma.product.findUnique({
+        where: { id },
+        select: {
+          categories: { select: { id: true } },
+          subcategories: { select: { categoryId: true } },
+        },
+      });
+      const effectiveCategoryIds =
+        dto.categoryIds !== undefined
+          ? categoryIds
+          : (existing?.categories.map((c) => c.id) ?? []);
+      const effectiveSubParentIds =
+        dto.subcategoryIds !== undefined
+          ? subParentIds
+          : new Set(existing?.subcategories.map((s) => s.categoryId) ?? []);
+      await this.assertTaxonomyComplete(
+        effectiveCategoryIds,
+        effectiveSubParentIds,
       );
+
       // `set` replaces the full association list, so only touch the side(s) the
       // caller actually sent. Parent categories of chosen subcategories are
       // folded into `categoryIds` only when categories are being replaced too.
@@ -173,16 +197,31 @@ export class ProductsService {
 
   async remove(id: string) {
     await this.ensureExists(id);
+    // Capture the image keys before the DB cascade removes the rows, then drop
+    // the objects from R2 once the product is gone (best-effort; see deleteKeys).
+    const images = await this.prisma.productImage.findMany({
+      where: { productId: id },
+      select: { url: true },
+    });
     await this.prisma.product.delete({ where: { id } });
+    await this.cloudflare.deleteKeys(images.map((img) => img.url));
     return { id, deleted: true };
   }
 
   // --- helpers ---------------------------------------------------------------
 
   private async list(query: QueryProductDto, where: Prisma.ProductWhereInput) {
-    const orderBy = {
-      [resolveSortColumn(query.sortBy, SORTABLE, 'createdAt')]: query.sortOrder,
-    };
+    // Most-viewed (highest click_count) always floats to the top of every
+    // listing; the caller's requested sort acts as the tie-breaker within an
+    // equal view count. When the caller already asks to sort by clickCount we
+    // don't duplicate the key.
+    const sortColumn = resolveSortColumn(query.sortBy, SORTABLE, 'createdAt');
+    const orderBy: Prisma.ProductOrderByWithRelationInput[] = [
+      { clickCount: 'desc' },
+      ...(sortColumn === 'clickCount'
+        ? []
+        : [{ [sortColumn]: query.sortOrder }]),
+    ];
 
     const [items, total] = await this.prisma.$transaction([
       this.prisma.product.findMany({
@@ -255,9 +294,15 @@ export class ProductsService {
   private async resolveTaxonomy(
     categoryIds?: string[],
     subcategoryIds?: string[],
-  ): Promise<{ categoryIds: string[]; subcategoryIds: string[] }> {
+  ): Promise<{
+    categoryIds: string[];
+    subcategoryIds: string[];
+    subParentIds: Set<string>;
+  }> {
     const catIds = new Set(categoryIds ?? []);
     const subIds = [...new Set(subcategoryIds ?? [])];
+    // Parent categories that have at least one chosen subcategory.
+    const subParentIds = new Set<string>();
 
     if (catIds.size > 0) {
       const found = await this.prisma.category.findMany({
@@ -278,10 +323,42 @@ export class ProductsService {
         throw new BadRequestException('One or more subcategories do not exist');
       }
       // Keep the category set consistent with the chosen subcategories.
-      for (const sub of subs) catIds.add(sub.categoryId);
+      for (const sub of subs) {
+        catIds.add(sub.categoryId);
+        subParentIds.add(sub.categoryId);
+      }
     }
 
-    return { categoryIds: [...catIds], subcategoryIds: subIds };
+    return { categoryIds: [...catIds], subcategoryIds: subIds, subParentIds };
+  }
+
+  /**
+   * Editorial rule for product taxonomy: a product must sit in at least one
+   * category, and for every chosen category that *has* subcategories, at least
+   * one of those subcategories must be chosen too. `subParentIds` is the set of
+   * categories that already have a chosen subcategory.
+   */
+  private async assertTaxonomyComplete(
+    categoryIds: string[],
+    subParentIds: Set<string>,
+  ) {
+    if (categoryIds.length === 0) {
+      throw new BadRequestException('Select at least one category');
+    }
+
+    // Of the chosen categories, find those that actually have subcategories.
+    const parentsWithSubs = await this.prisma.category.findMany({
+      where: { id: { in: categoryIds }, subcategories: { some: {} } },
+      select: { id: true, name: true },
+    });
+    const missing = parentsWithSubs.filter((c) => !subParentIds.has(c.id));
+    if (missing.length > 0) {
+      throw new BadRequestException(
+        `Select at least one subcategory for: ${missing
+          .map((c) => c.name)
+          .join(', ')}`,
+      );
+    }
   }
 
   private async ensureExists(id: string) {

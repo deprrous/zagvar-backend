@@ -4,6 +4,7 @@ import {
   S3Client,
   PutObjectCommand,
   DeleteObjectCommand,
+  DeleteObjectsCommand,
   GetObjectCommand,
 } from '@aws-sdk/client-s3';
 import { randomUUID } from 'node:crypto';
@@ -193,6 +194,57 @@ export class CloudflareService {
     } catch (err) {
       console.error('Delete error:', err);
       throw new InternalServerErrorException('errors.failedToDeleteFile');
+    }
+  }
+
+  /**
+   * Deletes a single stored object by its reference. The value is first reduced
+   * to our object key; external/absolute URLs (seed images, social links) are
+   * not ours to delete and are skipped. Best-effort: a storage failure is logged
+   * rather than thrown, so it never undoes a DB delete that already succeeded.
+   */
+  async deleteByKey(value: string | null | undefined): Promise<void> {
+    if (!value) return;
+    const key = this.toStorageKey(value);
+    if (!this.isOwnKey(key)) return;
+    try {
+      await this.s3.send(
+        new DeleteObjectCommand({ Bucket: this.bucket, Key: key }),
+      );
+    } catch (err) {
+      console.error('Delete error:', err);
+    }
+  }
+
+  /**
+   * Bulk-deletes stored objects by their references — used when removing a
+   * product (its images) or a whole shop (every product's images). Values are
+   * normalized to keys and deduped; external/absolute URLs are skipped. R2 caps
+   * a batch delete at 1000 keys, so the list is chunked. Best-effort: failures
+   * are logged, never thrown.
+   */
+  async deleteKeys(values: Array<string | null | undefined>): Promise<void> {
+    const keys = [
+      ...new Set(
+        values
+          .map((v) => (v ? this.toStorageKey(v) : v))
+          .filter((v): v is string => !!v && this.isOwnKey(v)),
+      ),
+    ];
+    if (keys.length === 0) return;
+
+    for (let i = 0; i < keys.length; i += 1000) {
+      const chunk = keys.slice(i, i + 1000);
+      try {
+        await this.s3.send(
+          new DeleteObjectsCommand({
+            Bucket: this.bucket,
+            Delete: { Objects: chunk.map((Key) => ({ Key })) },
+          }),
+        );
+      } catch (err) {
+        console.error('Bulk delete error:', err);
+      }
     }
   }
   // #endregion

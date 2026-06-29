@@ -63,7 +63,12 @@ export class ProductImagesService {
 
   async remove(productId: string, id: string) {
     await this.ensureBelongsToProduct(productId, id);
+    const image = await this.prisma.productImage.findUnique({
+      where: { id },
+      select: { url: true },
+    });
     await this.prisma.productImage.delete({ where: { id } });
+    await this.cloudflare.deleteByKey(image?.url);
     return { id, deleted: true };
   }
 

@@ -8,6 +8,7 @@ import { paginate, resolveSortColumn } from '../../common/dto/paginated';
 import { slugify } from '../../common/utils/slug.util';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateSubcategoryDto } from './dto/create-subcategory.dto';
+import { MoveSubcategoryProductsDto } from './dto/move-products.dto';
 import { QuerySubcategoryDto } from './dto/query-subcategory.dto';
 import { UpdateSubcategoryDto } from './dto/update-subcategory.dto';
 
@@ -84,12 +85,91 @@ export class SubcategoriesService {
     return { id, deleted: true };
   }
 
+  /**
+   * Reassigns every product in `fromSubcategoryId` over to `toSubcategoryId`.
+   * The target may live under a different parent category, so both relations are
+   * rewritten to a consistent final state per product:
+   *   - subcategories: source dropped, target added.
+   *   - categories: the target's parent category is always added (the new parent
+   *     is saved on the product); the source's parent is dropped only when no
+   *     remaining subcategory keeps the product under it. Any other categories
+   *     the product already had are preserved.
+   */
+  async moveProducts(dto: MoveSubcategoryProductsDto) {
+    if (dto.fromSubcategoryId === dto.toSubcategoryId) {
+      throw new BadRequestException(
+        'Source and target subcategories must be different',
+      );
+    }
+    const fromSub = await this.getSubcategoryOrThrow(dto.fromSubcategoryId);
+    const toSub = await this.getSubcategoryOrThrow(dto.toSubcategoryId);
+
+    // Pull each product's full category + subcategory sets so we can recompute
+    // both relations explicitly rather than relying on incremental writes.
+    const products = await this.prisma.product.findMany({
+      where: { subcategories: { some: { id: fromSub.id } } },
+      select: {
+        id: true,
+        categories: { select: { id: true } },
+        subcategories: { select: { id: true, categoryId: true } },
+      },
+    });
+
+    await this.prisma.$transaction(
+      products.map((product) => {
+        // Final subcategory set: drop the source, add the target.
+        const subcategoryIds = new Set(product.subcategories.map((s) => s.id));
+        subcategoryIds.delete(fromSub.id);
+        subcategoryIds.add(toSub.id);
+
+        // Final category set: start from what the product already has, drop the
+        // source parent only when no remaining subcategory keeps it there, then
+        // always ensure the target parent is present (covers same-parent moves
+        // too, where the delete + add cancel out).
+        const categoryIds = new Set(product.categories.map((c) => c.id));
+        const keepsSourceCategory = product.subcategories.some(
+          (s) => s.id !== fromSub.id && s.categoryId === fromSub.categoryId,
+        );
+        if (!keepsSourceCategory) categoryIds.delete(fromSub.categoryId);
+        categoryIds.add(toSub.categoryId);
+
+        return this.prisma.product.update({
+          where: { id: product.id },
+          data: {
+            subcategories: {
+              set: [...subcategoryIds].map((id) => ({ id })),
+            },
+            categories: {
+              set: [...categoryIds].map((id) => ({ id })),
+            },
+          },
+        });
+      }),
+    );
+
+    return {
+      fromSubcategoryId: fromSub.id,
+      toSubcategoryId: toSub.id,
+      movedCount: products.length,
+    };
+  }
+
   private async ensureExists(id: string) {
     const exists = await this.prisma.subcategory.findUnique({
       where: { id },
       select: { id: true },
     });
     if (!exists) throw new NotFoundException('Subcategory not found');
+  }
+
+  /** Loads a subcategory with its parent category id, or 404s. */
+  private async getSubcategoryOrThrow(id: string) {
+    const sub = await this.prisma.subcategory.findUnique({
+      where: { id },
+      select: { id: true, categoryId: true },
+    });
+    if (!sub) throw new NotFoundException('Subcategory not found');
+    return sub;
   }
 
   private async ensureCategoryExists(categoryId: string) {
