@@ -105,8 +105,8 @@ describe('AuthService', () => {
       shopId: 'shop-1',
       isActive: false,
     });
-    await expect(
-      service.login('acme-owner', password),
-    ).rejects.toBeInstanceOf(UnauthorizedException);
+    await expect(service.login('acme-owner', password)).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
   });
 });

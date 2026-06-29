@@ -54,7 +54,9 @@ export class ShopsController {
   @Get(':id')
   @Roles(Role.SuperAdmin, Role.ShopAdmin)
   @CheckOwnership(OwnedResource.Shop)
-  @ApiOperation({ summary: 'Get a shop by id (super admin, or owning shop admin)' })
+  @ApiOperation({
+    summary: 'Get a shop by id (super admin, or owning shop admin)',
+  })
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.shopsService.findOne(id);
   }

@@ -90,7 +90,10 @@ describe('Auth & ownership (e2e)', () => {
   });
 
   it('logs in the super admin and lists shops via the cookie', async () => {
-    const { agent, res } = await signIn(SUPER_ADMIN.email, SUPER_ADMIN.password);
+    const { agent, res } = await signIn(
+      SUPER_ADMIN.email,
+      SUPER_ADMIN.password,
+    );
     expect(res.status).toBe(200);
     await agent.get('/shops').expect(200);
   });
@@ -123,7 +126,10 @@ describe('Auth & ownership (e2e)', () => {
     let otherProductId: string;
 
     beforeAll(async () => {
-      const { agent, res } = await signIn(ACME_ADMIN.username, ACME_ADMIN.password);
+      const { agent, res } = await signIn(
+        ACME_ADMIN.username,
+        ACME_ADMIN.password,
+      );
       acme = agent;
       acmeShopId = res.body.data.user.shopId;
 

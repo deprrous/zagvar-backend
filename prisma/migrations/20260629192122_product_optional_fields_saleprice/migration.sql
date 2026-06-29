@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE "products" ADD COLUMN     "sale_price" DECIMAL(12,2),
+ALTER COLUMN "name" DROP NOT NULL,
+ALTER COLUMN "price" DROP NOT NULL,
+ALTER COLUMN "currency" SET DEFAULT 'MNT';

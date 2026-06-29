@@ -38,7 +38,7 @@ export class CloudflareService {
 
     this.s3 = new S3Client({
       endpoint: this.endpoint, // already full https://....r2.cloudflarestorage.com
-      region: 'auto',          // always "auto" for R2
+      region: 'auto', // always "auto" for R2
       credentials: {
         accessKeyId,
         secretAccessKey,
@@ -52,31 +52,31 @@ export class CloudflareService {
     folder: string = this.defaultFolder,
     _publicRead = true, // ignored for R2
     userId?: string,
-    ): Promise<{ key: string; signedUrl: string }> {
+  ): Promise<{ key: string; signedUrl: string }> {
     // Sanitize: strip path components, keep only safe ASCII chars, limit length
     const safeName = file.originalname
-      .replace(/.*[\/\\]/, '')       // strip directory components
+      .replace(/.*[\/\\]/, '') // strip directory components
       .replace(/[^a-zA-Z0-9._-]/g, '_') // only safe chars
-      .slice(0, 100);                    // limit length
+      .slice(0, 100); // limit length
     const key = `${folder}/${randomUUID()}-${userId ?? 'anon'}-${safeName}`;
 
     const command = new PutObjectCommand({
-        Bucket: this.bucket,
-        Key: key,
-        Body: file.buffer,
-        ContentType: file.mimetype,
-        Metadata: {
+      Bucket: this.bucket,
+      Key: key,
+      Body: file.buffer,
+      ContentType: file.mimetype,
+      Metadata: {
         'x-amz-meta-original-name': file.originalname,
-        },
+      },
     });
 
     try {
-        await this.s3.send(command);
-        const signedUrl = await this.getSignedUrl(key, 600);
-        return { key, signedUrl };
+      await this.s3.send(command);
+      const signedUrl = await this.getSignedUrl(key, 600);
+      return { key, signedUrl };
     } catch (err) {
-        console.error('Upload error:', err);
-        throw new InternalServerErrorException('errors.failedToUploadFile');
+      console.error('Upload error:', err);
+      throw new InternalServerErrorException('errors.failedToUploadFile');
     }
   }
   // #endregion
@@ -88,7 +88,9 @@ export class CloudflareService {
       Key: key,
     });
 
-    return await getSignedUrl(this.s3, command, { expiresIn: expiresInSeconds });
+    return await getSignedUrl(this.s3, command, {
+      expiresIn: expiresInSeconds,
+    });
   }
   // #endregion
 

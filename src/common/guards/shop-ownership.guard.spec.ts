@@ -1,4 +1,8 @@
-import { ExecutionContext, ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  ExecutionContext,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { OwnedResource } from '../decorators/ownership.decorator';
 import { AuthUser, Role } from '../types/auth.types';
@@ -51,14 +55,16 @@ describe('ShopOwnershipGuard', () => {
 
   it('allows routes without ownership metadata', async () => {
     reflector.getAllAndOverride.mockReturnValue(undefined);
-    await expect(
-      guard.canActivate(buildContext(shopAdmin, {})),
-    ).resolves.toBe(true);
+    await expect(guard.canActivate(buildContext(shopAdmin, {}))).resolves.toBe(
+      true,
+    );
     expect(prisma.shop.findUnique).not.toHaveBeenCalled();
   });
 
   it('lets super admins bypass ownership checks', async () => {
-    reflector.getAllAndOverride.mockReturnValue({ resource: OwnedResource.Shop });
+    reflector.getAllAndOverride.mockReturnValue({
+      resource: OwnedResource.Shop,
+    });
     await expect(
       guard.canActivate(buildContext(superAdmin, { id: 'any-shop' })),
     ).resolves.toBe(true);
@@ -66,15 +72,19 @@ describe('ShopOwnershipGuard', () => {
   });
 
   it('allows a shop admin to act on their own shop', async () => {
-    reflector.getAllAndOverride.mockReturnValue({ resource: OwnedResource.Shop });
+    reflector.getAllAndOverride.mockReturnValue({
+      resource: OwnedResource.Shop,
+    });
     prisma.shop.findUnique.mockResolvedValue({ id: 'shop-1' });
     await expect(
       guard.canActivate(buildContext(shopAdmin, { id: 'shop-1' })),
     ).resolves.toBe(true);
   });
 
-  it("forbids a shop admin from acting on another shop", async () => {
-    reflector.getAllAndOverride.mockReturnValue({ resource: OwnedResource.Shop });
+  it('forbids a shop admin from acting on another shop', async () => {
+    reflector.getAllAndOverride.mockReturnValue({
+      resource: OwnedResource.Shop,
+    });
     prisma.shop.findUnique.mockResolvedValue({ id: 'shop-2' });
     await expect(
       guard.canActivate(buildContext(shopAdmin, { id: 'shop-2' })),
@@ -112,7 +122,9 @@ describe('ShopOwnershipGuard', () => {
   });
 
   it('rejects an unauthenticated request on a scoped route', async () => {
-    reflector.getAllAndOverride.mockReturnValue({ resource: OwnedResource.Shop });
+    reflector.getAllAndOverride.mockReturnValue({
+      resource: OwnedResource.Shop,
+    });
     await expect(
       guard.canActivate(buildContext(undefined, { id: 'shop-1' })),
     ).rejects.toBeInstanceOf(ForbiddenException);

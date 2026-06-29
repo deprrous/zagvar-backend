@@ -23,7 +23,8 @@ export class CreateBannerDto {
 
   @ApiPropertyOptional({
     example: '/category/electronics',
-    description: 'Where the banner links to when clicked (absolute or relative).',
+    description:
+      'Where the banner links to when clicked (absolute or relative).',
   })
   @IsString()
   @MaxLength(2048)

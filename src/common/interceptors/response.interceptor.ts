@@ -18,9 +18,10 @@ export interface ApiResponse<T> {
 
 /** Wraps every successful response in a consistent envelope. */
 @Injectable()
-export class ResponseInterceptor<T>
-  implements NestInterceptor<T, ApiResponse<T>>
-{
+export class ResponseInterceptor<T> implements NestInterceptor<
+  T,
+  ApiResponse<T>
+> {
   intercept(
     context: ExecutionContext,
     next: CallHandler<T>,

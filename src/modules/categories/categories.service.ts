@@ -44,7 +44,9 @@ export class CategoriesService {
         orderBy,
         skip: query.skip,
         take: query.limit,
-        include: { _count: { select: { subcategories: true, products: true } } },
+        include: {
+          _count: { select: { subcategories: true, products: true } },
+        },
       }),
       this.prisma.category.count({ where }),
     ]);

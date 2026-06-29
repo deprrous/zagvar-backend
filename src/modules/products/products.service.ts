@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
 import { Prisma } from '@prisma/client';
 import { paginate, resolveSortColumn } from '../../common/dto/paginated';
 import { AuthUser, Role } from '../../common/types/auth.types';
@@ -39,14 +40,22 @@ export class ProductsService {
       dto.subcategoryIds,
     );
 
+    // Name is optional; slug stays NOT NULL and unique-per-shop, so fall back to
+    // a generated slug when the name is missing or transliterates to empty.
+    const slug =
+      dto.slug ||
+      (dto.name && slugify(dto.name)) ||
+      `product-${randomUUID().slice(0, 8)}`;
+
     return this.prisma.product.create({
       data: {
         shopId,
-        name: dto.name,
-        slug: dto.slug ?? slugify(dto.name),
+        name: dto.name ?? null,
+        slug,
         description: dto.description,
-        price: dto.price,
-        currency: dto.currency ?? 'USD',
+        price: dto.price ?? null,
+        salePrice: dto.salePrice ?? null,
+        currency: dto.currency ?? 'MNT',
         size: dto.size ?? [],
         color: dto.color ?? [],
         categories: { connect: categoryIds.map((id) => ({ id })) },
@@ -130,6 +139,7 @@ export class ProductsService {
     if (dto.slug !== undefined) data.slug = dto.slug;
     if (dto.description !== undefined) data.description = dto.description;
     if (dto.price !== undefined) data.price = dto.price;
+    if (dto.salePrice !== undefined) data.salePrice = dto.salePrice;
     if (dto.currency !== undefined) data.currency = dto.currency;
     if (dto.size !== undefined) data.size = dto.size;
     if (dto.color !== undefined) data.color = dto.color;
@@ -193,7 +203,7 @@ export class ProductsService {
   }
 
   private buildWhere(query: QueryProductDto): Prisma.ProductWhereInput {
-    const price: Prisma.DecimalFilter = {};
+    const price: Prisma.DecimalNullableFilter = {};
     if (query.minPrice !== undefined) price.gte = query.minPrice;
     if (query.maxPrice !== undefined) price.lte = query.maxPrice;
 

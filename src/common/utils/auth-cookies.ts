@@ -10,7 +10,9 @@ export const ACCESS_COOKIE = 'access_token';
 export const REFRESH_COOKIE = 'refresh_token';
 
 /** Parses a raw `Cookie` header into a name→value map. */
-export function parseCookies(header: string | undefined): Record<string, string> {
+export function parseCookies(
+  header: string | undefined,
+): Record<string, string> {
   const out: Record<string, string> = {};
   if (!header) return out;
   for (const part of header.split(';')) {
@@ -50,13 +52,16 @@ export function durationToMs(value: string, fallbackMs: number): number {
 }
 
 function baseOptions(): CookieOptions {
-  const sameSite = (process.env.COOKIE_SAMESITE as CookieOptions['sameSite']) || 'lax';
+  const sameSite =
+    (process.env.COOKIE_SAMESITE as CookieOptions['sameSite']) || 'lax';
   return {
     httpOnly: true,
     sameSite,
     // Secure is required for SameSite=None and recommended in production;
     // disabled for local http development.
-    secure: process.env.COOKIE_SECURE === 'true' || process.env.NODE_ENV === 'production',
+    secure:
+      process.env.COOKIE_SECURE === 'true' ||
+      process.env.NODE_ENV === 'production',
     path: '/',
     ...(process.env.COOKIE_DOMAIN ? { domain: process.env.COOKIE_DOMAIN } : {}),
   };
@@ -67,10 +72,22 @@ export function setAuthCookies(
   res: Response,
   tokens: { accessToken: string; refreshToken: string },
 ): void {
-  const accessMs = durationToMs(process.env.JWT_ACCESS_EXPIRES_IN ?? '15m', 900_000);
-  const refreshMs = durationToMs(process.env.JWT_REFRESH_EXPIRES_IN ?? '7d', 604_800_000);
-  res.cookie(ACCESS_COOKIE, tokens.accessToken, { ...baseOptions(), maxAge: accessMs });
-  res.cookie(REFRESH_COOKIE, tokens.refreshToken, { ...baseOptions(), maxAge: refreshMs });
+  const accessMs = durationToMs(
+    process.env.JWT_ACCESS_EXPIRES_IN ?? '15m',
+    900_000,
+  );
+  const refreshMs = durationToMs(
+    process.env.JWT_REFRESH_EXPIRES_IN ?? '7d',
+    604_800_000,
+  );
+  res.cookie(ACCESS_COOKIE, tokens.accessToken, {
+    ...baseOptions(),
+    maxAge: accessMs,
+  });
+  res.cookie(REFRESH_COOKIE, tokens.refreshToken, {
+    ...baseOptions(),
+    maxAge: refreshMs,
+  });
 }
 
 /** Clears both auth cookies (logout / failed refresh). */

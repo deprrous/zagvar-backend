@@ -26,7 +26,9 @@ export class PublicService {
     const [items, total] = await this.prisma.$transaction([
       this.prisma.shop.findMany({
         where,
-        orderBy: { [query.sortBy === 'name' ? 'name' : 'createdAt']: query.sortOrder },
+        orderBy: {
+          [query.sortBy === 'name' ? 'name' : 'createdAt']: query.sortOrder,
+        },
         skip: query.skip,
         take: query.limit,
         select: {

@@ -18,7 +18,8 @@ export class CreateCategoryDto {
 
   @ApiPropertyOptional({
     example: 'Electronics',
-    description: 'English display name. Shown when the storefront is in English.',
+    description:
+      'English display name. Shown when the storefront is in English.',
     nullable: true,
   })
   @IsString()

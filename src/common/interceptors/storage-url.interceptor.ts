@@ -25,7 +25,10 @@ const IMAGE_FIELDS = new Set(['logoUrl', 'coverUrl', 'imageUrl', 'url']);
 export class StorageUrlInterceptor implements NestInterceptor {
   constructor(private readonly cloudflare: CloudflareService) {}
 
-  intercept(_context: ExecutionContext, next: CallHandler): Observable<unknown> {
+  intercept(
+    _context: ExecutionContext,
+    next: CallHandler,
+  ): Observable<unknown> {
     return next.handle().pipe(
       mergeMap(async (data) => {
         await this.signDeep(data);

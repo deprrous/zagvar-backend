@@ -80,7 +80,9 @@ export class EnvironmentVariables {
   SEED_SUPER_ADMIN_NAME = 'Super Admin';
 }
 
-export function validateEnv(config: Record<string, unknown>): EnvironmentVariables {
+export function validateEnv(
+  config: Record<string, unknown>,
+): EnvironmentVariables {
   const validated = plainToInstance(EnvironmentVariables, config, {
     enableImplicitConversion: true,
   });
@@ -89,7 +91,10 @@ export function validateEnv(config: Record<string, unknown>): EnvironmentVariabl
   if (errors.length > 0) {
     throw new Error(
       `Invalid environment configuration:\n${errors
-        .map((e) => `  - ${e.property}: ${Object.values(e.constraints ?? {}).join(', ')}`)
+        .map(
+          (e) =>
+            `  - ${e.property}: ${Object.values(e.constraints ?? {}).join(', ')}`,
+        )
         .join('\n')}`,
     );
   }

@@ -80,7 +80,9 @@ export class PublicController {
 
   @Post('products/:id/click')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Register a click (atomic single-column increment)' })
+  @ApiOperation({
+    summary: 'Register a click (atomic single-column increment)',
+  })
   click(@Param('id', ParseUUIDPipe) id: string) {
     return this.productsService.incrementClick(id);
   }

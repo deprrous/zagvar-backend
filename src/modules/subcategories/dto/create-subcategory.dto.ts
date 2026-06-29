@@ -21,7 +21,8 @@ export class CreateSubcategoryDto {
 
   @ApiPropertyOptional({
     example: 'Smartphones',
-    description: 'English display name. Shown when the storefront is in English.',
+    description:
+      'English display name. Shown when the storefront is in English.',
     nullable: true,
   })
   @IsString()

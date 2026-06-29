@@ -2,7 +2,10 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsString, MaxLength, MinLength } from 'class-validator';
 
 export class CreateShopContactDto {
-  @ApiProperty({ example: 'phone', description: 'phone, email, whatsapp, etc.' })
+  @ApiProperty({
+    example: 'phone',
+    description: 'phone, email, whatsapp, etc.',
+  })
   @IsString()
   @MinLength(2)
   @MaxLength(40)

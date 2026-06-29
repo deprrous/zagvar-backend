@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
@@ -11,7 +11,6 @@ import {
   Matches,
   MaxLength,
   Min,
-  MinLength,
 } from 'class-validator';
 
 export class CreateProductDto {
@@ -24,11 +23,11 @@ export class CreateProductDto {
   @IsOptional()
   shopId?: string;
 
-  @ApiProperty({ example: 'Wireless Headphones' })
+  @ApiPropertyOptional({ example: 'Wireless Headphones' })
   @IsString()
-  @MinLength(2)
   @MaxLength(200)
-  name!: string;
+  @IsOptional()
+  name?: string;
 
   @ApiPropertyOptional({
     description:
@@ -46,13 +45,25 @@ export class CreateProductDto {
   @IsOptional()
   description?: string;
 
-  @ApiProperty({ example: 199.99, minimum: 0 })
+  @ApiPropertyOptional({ example: 199.99, minimum: 0 })
   @Type(() => Number)
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
-  price!: number;
+  @IsOptional()
+  price?: number;
 
-  @ApiPropertyOptional({ example: 'USD', default: 'USD' })
+  @ApiPropertyOptional({
+    example: 149.99,
+    minimum: 0,
+    description: 'Discounted price. Shown struck-through against `price`.',
+  })
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  @IsOptional()
+  salePrice?: number;
+
+  @ApiPropertyOptional({ example: 'MNT', default: 'MNT' })
   @IsString()
   @MaxLength(8)
   @IsOptional()
