@@ -27,13 +27,13 @@ describe('ShopOwnershipGuard', () => {
 
   const shopAdmin: AuthUser = {
     id: 'admin-1',
-    email: 'a@b.c',
+    username: 'acme-owner',
     role: Role.ShopAdmin,
     shopId: 'shop-1',
   };
   const superAdmin: AuthUser = {
     id: 'super-1',
-    email: 's@b.c',
+    username: 's@b.c',
     role: Role.SuperAdmin,
   };
 

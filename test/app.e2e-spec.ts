@@ -19,7 +19,7 @@ const SUPER_ADMIN = {
   email: process.env.SEED_SUPER_ADMIN_EMAIL ?? 'superadmin@zagvar.local',
   password: process.env.SEED_SUPER_ADMIN_PASSWORD ?? 'ChangeMe123!',
 };
-const ACME_ADMIN = { email: 'owner@acme.test', password: 'ShopAdmin123!' };
+const ACME_ADMIN = { username: 'owner@acme.test', password: 'ShopAdmin123!' };
 
 describe('Auth & ownership (e2e)', () => {
   let app: INestApplication;
@@ -46,9 +46,9 @@ describe('Auth & ownership (e2e)', () => {
   });
 
   /** Logs an identity in on its own cookie-jar agent. */
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (username: string, password: string) => {
     const agent = request.agent(app.getHttpServer());
-    const res = await agent.post('/auth/login').send({ email, password });
+    const res = await agent.post('/auth/login').send({ username, password });
     return { agent, res };
   };
 
@@ -69,7 +69,7 @@ describe('Auth & ownership (e2e)', () => {
   it('rejects bad credentials with 401', async () => {
     await request(app.getHttpServer())
       .post('/auth/login')
-      .send({ email: SUPER_ADMIN.email, password: 'wrong-password' })
+      .send({ username: SUPER_ADMIN.email, password: 'wrong-password' })
       .expect(401);
   });
 
@@ -98,7 +98,7 @@ describe('Auth & ownership (e2e)', () => {
   it('GET /auth/me returns the authenticated admin', async () => {
     const { agent } = await signIn(SUPER_ADMIN.email, SUPER_ADMIN.password);
     const me = await agent.get('/auth/me').expect(200);
-    expect(me.body.data.email).toBe(SUPER_ADMIN.email);
+    expect(me.body.data.username).toBe(SUPER_ADMIN.email);
   });
 
   it('refreshes the token pair using the refresh cookie', async () => {
@@ -123,7 +123,7 @@ describe('Auth & ownership (e2e)', () => {
     let otherProductId: string;
 
     beforeAll(async () => {
-      const { agent, res } = await signIn(ACME_ADMIN.email, ACME_ADMIN.password);
+      const { agent, res } = await signIn(ACME_ADMIN.username, ACME_ADMIN.password);
       acme = agent;
       acmeShopId = res.body.data.user.shopId;
 

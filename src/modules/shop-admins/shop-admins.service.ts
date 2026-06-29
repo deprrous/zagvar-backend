@@ -12,14 +12,13 @@ import { CreateShopAdminDto } from './dto/create-shop-admin.dto';
 import { UpdateShopAdminDto } from './dto/update-shop-admin.dto';
 
 const BCRYPT_ROUNDS = 12;
-const SORTABLE = ['email', 'name', 'createdAt'] as const;
+const SORTABLE = ['username', 'createdAt'] as const;
 
 /** Public projection — never leaks the password hash. */
 const SAFE_SELECT = {
   id: true,
   shopId: true,
-  email: true,
-  name: true,
+  username: true,
   isActive: true,
   createdAt: true,
   updatedAt: true,
@@ -35,9 +34,8 @@ export class ShopAdminsService {
     return this.prisma.shopAdmin.create({
       data: {
         shopId: dto.shopId,
-        email: dto.email,
+        username: dto.username,
         passwordHash,
-        name: dto.name,
         isActive: dto.isActive ?? true,
       },
       select: SAFE_SELECT,
@@ -49,10 +47,7 @@ export class ShopAdminsService {
       ...(shopId ? { shopId } : {}),
       ...(query.search
         ? {
-            OR: [
-              { email: { contains: query.search, mode: 'insensitive' } },
-              { name: { contains: query.search, mode: 'insensitive' } },
-            ],
+            username: { contains: query.search, mode: 'insensitive' },
           }
         : {}),
     };
@@ -88,8 +83,7 @@ export class ShopAdminsService {
     await this.ensureExists(id);
 
     const data: Prisma.ShopAdminUpdateInput = {};
-    if (dto.email !== undefined) data.email = dto.email;
-    if (dto.name !== undefined) data.name = dto.name;
+    if (dto.username !== undefined) data.username = dto.username;
     if (dto.isActive !== undefined) data.isActive = dto.isActive;
     if (dto.password !== undefined) {
       data.passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);

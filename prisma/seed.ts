@@ -102,7 +102,7 @@ interface ShopSeed {
   slug: string;
   description: string;
   address: string;
-  adminEmail: string;
+  adminUsername: string;
   adminPassword: string;
   contact: { type: string; value: string };
   social: { platform: string; url: string };
@@ -114,7 +114,7 @@ const SHOPS: ShopSeed[] = [
     slug: 'acme-electronics',
     description: 'Gadgets and gear for everyone.',
     address: '123 Market St',
-    adminEmail: 'owner@acme.test',
+    adminUsername: 'owner@acme.test',
     adminPassword: 'ShopAdmin123!',
     contact: { type: 'phone', value: '+976 9911 2233' },
     social: { platform: 'instagram', url: 'https://instagram.com/acme' },
@@ -124,7 +124,7 @@ const SHOPS: ShopSeed[] = [
     slug: 'trendy-threads',
     description: 'Streetwear and sneakers.',
     address: '500 Fashion Ave',
-    adminEmail: 'owner@trendy.test',
+    adminUsername: 'owner@trendy.test',
     adminPassword: 'ShopAdmin123!',
     contact: { type: 'whatsapp', value: '+976 8800 1122' },
     social: { platform: 'facebook', url: 'https://facebook.com/trendythreads' },
@@ -134,7 +134,7 @@ const SHOPS: ShopSeed[] = [
     slug: 'home-haven',
     description: 'Everything for a cozy home.',
     address: '78 Comfort Rd',
-    adminEmail: 'owner@homehaven.test',
+    adminUsername: 'owner@homehaven.test',
     adminPassword: 'ShopAdmin123!',
     contact: { type: 'phone', value: '+976 9090 3344' },
     social: { platform: 'instagram', url: 'https://instagram.com/homehaven' },
@@ -144,7 +144,7 @@ const SHOPS: ShopSeed[] = [
     slug: 'glow-beauty',
     description: 'Skincare, makeup and fragrances.',
     address: '12 Radiance Blvd',
-    adminEmail: 'owner@glow.test',
+    adminUsername: 'owner@glow.test',
     adminPassword: 'ShopAdmin123!',
     contact: { type: 'whatsapp', value: '+976 8811 5566' },
     social: { platform: 'facebook', url: 'https://facebook.com/glowbeauty' },
@@ -154,7 +154,7 @@ const SHOPS: ShopSeed[] = [
     slug: 'peak-outdoors',
     description: 'Gear up for every adventure.',
     address: '9 Summit Way',
-    adminEmail: 'owner@peak.test',
+    adminUsername: 'owner@peak.test',
     adminPassword: 'ShopAdmin123!',
     contact: { type: 'phone', value: '+976 9933 7788' },
     social: { platform: 'telegram', url: 'https://t.me/peakoutdoors' },
@@ -279,16 +279,15 @@ async function main(): Promise<void> {
     shopIdBySlug.set(s.slug, shop.id);
 
     await prisma.shopAdmin.upsert({
-      where: { email: s.adminEmail },
+      where: { username: s.adminUsername },
       update: {},
       create: {
         shopId: shop.id,
-        email: s.adminEmail,
+        username: s.adminUsername,
         passwordHash: await bcrypt.hash(s.adminPassword, BCRYPT_ROUNDS),
-        name: `${s.name} Owner`,
       },
     });
-    console.log(`Shop ready: ${shop.slug} (admin: ${s.adminEmail})`);
+    console.log(`Shop ready: ${shop.slug} (admin: ${s.adminUsername})`);
   }
 
   // --- Products --------------------------------------------------------------

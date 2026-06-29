@@ -52,9 +52,8 @@ model Shop {
 model ShopAdmin {
   id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   shopId       String    @map("shop_id") @db.Uuid
-  email        String    @unique @db.VarChar
+  username     String    @unique @db.VarChar
   passwordHash String    @map("password_hash") @db.VarChar
-  name         String?   @db.VarChar
   isActive     Boolean   @default(true) @map("is_active")
   createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt    DateTime? @updatedAt @map("updated_at") @db.Timestamptz(6)

@@ -36,7 +36,7 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const { accessToken, refreshToken, user } = await this.authService.login(
-      dto.email,
+      dto.username,
       dto.password,
     );
     // Tokens are delivered as httpOnly cookies — never exposed to client JS.

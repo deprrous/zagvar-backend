@@ -1,7 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsBoolean,
-  IsEmail,
+  IsNotEmpty,
   IsOptional,
   IsString,
   IsUUID,
@@ -14,20 +14,17 @@ export class CreateShopAdminDto {
   @IsUUID()
   shopId!: string;
 
-  @ApiProperty({ example: 'owner@acme.com' })
-  @IsEmail()
-  email!: string;
+  @ApiProperty({ example: 'acme-owner', description: 'Login username' })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(255)
+  username!: string;
 
   @ApiProperty({ example: 'StrongPass123!', minLength: 8 })
   @IsString()
   @MinLength(8)
   @MaxLength(72) // bcrypt max input length
   password!: string;
-
-  @ApiPropertyOptional({ example: 'Jane Owner' })
-  @IsString()
-  @IsOptional()
-  name?: string;
 
   @ApiPropertyOptional({ default: true })
   @IsBoolean()

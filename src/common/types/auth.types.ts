@@ -8,7 +8,8 @@ export enum Role {
 export interface JwtPayload {
   /** Subject — the admin's id (super admin or shop admin). */
   sub: string;
-  email: string;
+  /** Login identifier: a super admin's email or a shop admin's username. */
+  username: string;
   role: Role;
   /** Present only for shop admins; identifies the shop they own. */
   shopId?: string;
@@ -17,7 +18,8 @@ export interface JwtPayload {
 /** The authenticated principal attached to `request.user`. */
 export interface AuthUser {
   id: string;
-  email: string;
+  /** Login identifier: a super admin's email or a shop admin's username. */
+  username: string;
   role: Role;
   shopId?: string;
 }

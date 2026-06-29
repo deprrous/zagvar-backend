@@ -62,14 +62,13 @@ describe('AuthService', () => {
     prisma.superAdmin.findUnique.mockResolvedValue(null);
     prisma.shopAdmin.findUnique.mockResolvedValue({
       id: 'admin-1',
-      email: 'owner@acme.test',
-      name: 'Owner',
+      username: 'acme-owner',
       passwordHash,
       shopId: 'shop-1',
       isActive: true,
     });
 
-    const result = await service.login('owner@acme.test', password);
+    const result = await service.login('acme-owner', password);
 
     expect(result.user).toMatchObject({
       role: Role.ShopAdmin,
@@ -101,14 +100,13 @@ describe('AuthService', () => {
     prisma.superAdmin.findUnique.mockResolvedValue(null);
     prisma.shopAdmin.findUnique.mockResolvedValue({
       id: 'admin-1',
-      email: 'owner@acme.test',
-      name: 'Owner',
+      username: 'acme-owner',
       passwordHash,
       shopId: 'shop-1',
       isActive: false,
     });
     await expect(
-      service.login('owner@acme.test', password),
+      service.login('acme-owner', password),
     ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 });

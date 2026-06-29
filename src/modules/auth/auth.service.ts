@@ -16,7 +16,7 @@ export interface TokenPair {
 export interface AuthResult extends TokenPair {
   user: {
     id: string;
-    email: string;
+    username: string;
     role: Role;
     name: string | null;
     shopId?: string;
@@ -37,8 +37,8 @@ export class AuthService {
     private readonly config: ConfigService,
   ) {}
 
-  async login(email: string, password: string): Promise<AuthResult> {
-    const principal = await this.findPrincipalByEmail(email);
+  async login(username: string, password: string): Promise<AuthResult> {
+    const principal = await this.findPrincipalByUsername(username);
     if (!principal) throw new UnauthorizedException('Invalid credentials');
 
     const valid = await bcrypt.compare(password, principal.passwordHash);
@@ -53,7 +53,7 @@ export class AuthService {
       ...tokens,
       user: {
         id: principal.id,
-        email: principal.email,
+        username: principal.username,
         role: principal.role,
         name: principal.name,
         shopId: principal.shopId,
@@ -80,7 +80,7 @@ export class AuthService {
     }
     return {
       id: principal.id,
-      email: principal.email,
+      username: principal.username,
       role: principal.role,
       name: principal.name,
       shopId: principal.shopId,
@@ -90,7 +90,7 @@ export class AuthService {
   private async issueTokens(principal: Principal): Promise<TokenPair> {
     const payload: JwtPayload = {
       sub: principal.id,
-      email: principal.email,
+      username: principal.username,
       role: principal.role,
       shopId: principal.shopId,
     };
@@ -120,14 +120,17 @@ export class AuthService {
     return { secret, expiresIn: expiresIn as JwtSignOptions['expiresIn'] };
   }
 
-  private async findPrincipalByEmail(email: string): Promise<Principal | null> {
+  private async findPrincipalByUsername(
+    username: string,
+  ): Promise<Principal | null> {
+    // Super admins log in with their email; shop admins with their username.
     const superAdmin = await this.prisma.superAdmin.findUnique({
-      where: { email },
+      where: { email: username },
     });
     if (superAdmin) {
       return {
         id: superAdmin.id,
-        email: superAdmin.email,
+        username: superAdmin.email,
         name: superAdmin.name,
         passwordHash: superAdmin.passwordHash,
         role: Role.SuperAdmin,
@@ -136,13 +139,13 @@ export class AuthService {
     }
 
     const shopAdmin = await this.prisma.shopAdmin.findUnique({
-      where: { email },
+      where: { username },
     });
     if (shopAdmin) {
       return {
         id: shopAdmin.id,
-        email: shopAdmin.email,
-        name: shopAdmin.name,
+        username: shopAdmin.username,
+        name: null,
         passwordHash: shopAdmin.passwordHash,
         role: Role.ShopAdmin,
         shopId: shopAdmin.shopId,
@@ -164,7 +167,7 @@ export class AuthService {
       return superAdmin
         ? {
             id: superAdmin.id,
-            email: superAdmin.email,
+            username: superAdmin.email,
             name: superAdmin.name,
             passwordHash: superAdmin.passwordHash,
             role: Role.SuperAdmin,
@@ -177,8 +180,8 @@ export class AuthService {
     return shopAdmin
       ? {
           id: shopAdmin.id,
-          email: shopAdmin.email,
-          name: shopAdmin.name,
+          username: shopAdmin.username,
+          name: null,
           passwordHash: shopAdmin.passwordHash,
           role: Role.ShopAdmin,
           shopId: shopAdmin.shopId,
@@ -190,7 +193,7 @@ export class AuthService {
 
 interface Principal {
   id: string;
-  email: string;
+  username: string;
   name: string | null;
   passwordHash: string;
   role: Role;
