@@ -19,6 +19,7 @@ import { validateEnv } from './config/env.validation';
 import { AuthModule } from './modules/auth/auth.module';
 import { BannersModule } from './modules/banners/banners.module';
 import { CategoriesModule } from './modules/categories/categories.module';
+import { LikesModule } from './modules/likes/likes.module';
 import { ProductImagesModule } from './modules/product-images/product-images.module';
 import { ProductsModule } from './modules/products/products.module';
 import { PublicModule } from './modules/public/public.module';
@@ -49,6 +50,7 @@ import { PrismaModule } from './prisma/prisma.module';
     ProductImagesModule,
     BannersModule,
     UploadsModule,
+    LikesModule,
     PublicModule,
   ],
   controllers: [AppController],

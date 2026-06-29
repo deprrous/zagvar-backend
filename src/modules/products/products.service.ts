@@ -26,6 +26,7 @@ const DETAIL_INCLUDE = {
   shop: { select: { id: true, name: true, slug: true, logoUrl: true } },
   categories: TAXONOMY_SELECT,
   subcategories: TAXONOMY_SELECT,
+  _count: { select: { likes: true } },
 } satisfies Prisma.ProductInclude;
 
 @Injectable()
@@ -194,6 +195,7 @@ export class ProductsService {
           shop: { select: { id: true, name: true, slug: true } },
           categories: TAXONOMY_SELECT,
           subcategories: TAXONOMY_SELECT,
+          _count: { select: { likes: true } },
         },
       }),
       this.prisma.product.count({ where }),
@@ -313,9 +315,13 @@ type TaxonomyRef = {
  * is treated as the primary one.
  */
 function toPublicProduct<
-  T extends { categories: TaxonomyRef[]; subcategories: TaxonomyRef[] },
+  T extends {
+    categories: TaxonomyRef[];
+    subcategories: TaxonomyRef[];
+    _count?: { likes: number };
+  },
 >(product: T) {
-  const { categories, subcategories, ...rest } = product;
+  const { categories, subcategories, _count, ...rest } = product;
   const category = categories[0] ?? null;
   const subcategory = subcategories[0] ?? null;
   return {
@@ -324,5 +330,8 @@ function toPublicProduct<
     subcategoryId: subcategory?.id ?? null,
     category,
     subcategory,
+    // Total likes, flattened from Prisma's relation `_count` so the storefront
+    // can render the heart count without an extra round-trip per card.
+    likeCount: _count?.likes ?? 0,
   };
 }
