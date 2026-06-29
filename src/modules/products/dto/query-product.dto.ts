@@ -41,4 +41,14 @@ export class QueryProductDto extends PaginationQueryDto {
   @IsBoolean()
   @IsOptional()
   isActive?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Only products on sale (with a sale price set)',
+  })
+  @Transform(({ value }) =>
+    value === 'true' ? true : value === 'false' ? false : value,
+  )
+  @IsBoolean()
+  @IsOptional()
+  sale?: boolean;
 }

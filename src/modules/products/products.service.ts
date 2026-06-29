@@ -216,6 +216,7 @@ export class ProductsService {
         ? { subcategories: { some: { id: query.subcategoryId } } }
         : {}),
       ...(query.isActive !== undefined ? { isActive: query.isActive } : {}),
+      ...(query.sale ? { salePrice: { not: null } } : {}),
       ...(query.minPrice !== undefined || query.maxPrice !== undefined
         ? { price }
         : {}),
